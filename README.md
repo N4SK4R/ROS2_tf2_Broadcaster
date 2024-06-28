@@ -1,7 +1,7 @@
 # ROS2_tf2_Broadcaster
 Using Rviz Marker Messages for Visualizing  tf2_ros/transform_broadcaster
 
-**System Info:** This package was tested on Ubuntu 22.04 with ROS Humble.
+**System Info:** These packages were tested on Ubuntu 22.04 with ROS Humble.
 
 ### Runtime Instructions
 
