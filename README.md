@@ -12,7 +12,7 @@ cd ros2_ws && mkdir src
 cd src
 ```
 After cloning the repo and building it, just type `ros2 launch rviz_marker display_marker.launch.py` into the terminal to get started. 
-This will launch Rviz and show a 10x10 grid
+This will launch Rviz and show a 10x10 grid <br>
 Then type `ros2 run agent service_test` on another terminal to display the agent marker on the grid
 
 ```
