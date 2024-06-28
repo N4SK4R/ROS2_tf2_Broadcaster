@@ -8,8 +8,9 @@ Panels:
         - /Grid1
         - /Grid1/Offset1
         - /Marker1
-        - /Marker1/Status1
         - /Marker1/Topic1
+        - /Marker2
+        - /Marker2/Topic1
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz_common/Selection
@@ -63,6 +64,19 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /Rviz_marker_topic/Map_nodes
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        agent_1: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /Rviz_marker_topic/base_link
       Value: true
   Enabled: true
   Global Options:
@@ -141,5 +155,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 28
-  Y: 28
+  X: 654
+  Y: 116
