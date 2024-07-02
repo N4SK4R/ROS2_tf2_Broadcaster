@@ -71,6 +71,10 @@ private:
         Path final_path {};
         final_path.serial_id = serial_id;
 
+        if(collisions.size() == 0){
+            return final_path;
+        }
+
         Grid_node grid[10+1][10+1];
 
         for (int i{0}; i <= 10; i++)
