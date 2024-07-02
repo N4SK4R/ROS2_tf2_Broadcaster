@@ -13,7 +13,8 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdateGoal.srv"
-  DEPENDENCIES geometry_msgs
+  "srv/GetPlan.srv"
+  DEPENDENCIES geometry_msgs std_msgs
 )
 
 ament_package()
