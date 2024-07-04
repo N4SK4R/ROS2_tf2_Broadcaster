@@ -14,6 +14,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdateGoal.srv"
   "srv/GetPlan.srv"
+  "msg/AgentInfo.msg"
   DEPENDENCIES geometry_msgs std_msgs
 )
 

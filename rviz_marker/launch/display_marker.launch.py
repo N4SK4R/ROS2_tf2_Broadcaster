@@ -3,10 +3,6 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_path
 import os
 
-# from launch_ros.parameter_descriptions import ParameterValue
-# from launch.substitutions import Command
-
-
 def generate_launch_description():
 
     rviz_config_path = os.path.join(get_package_share_path('rviz_marker'),
@@ -23,7 +19,13 @@ def generate_launch_description():
         arguments=['-d', rviz_config_path]
     )
 
+    path_planner_node = Node(
+        package="agent",
+        executable="planner_test",
+    )
+    
     return LaunchDescription([
         marker_node,
-        rviz2_node
+        rviz2_node,
+        path_planner_node
     ])

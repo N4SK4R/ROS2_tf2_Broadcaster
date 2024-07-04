@@ -27,14 +27,14 @@ struct Grid_node
 {
     Status stat;                                
     bool is_closed;                             
-    int past_cost;                              // G cost
-    int total_cost;                             // F cost
+    int G_cost;                              
+    int F_cost;    // F=G+H
     int pos[2];                                 
     geometry_msgs::msg::Point parent;                
 
-    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currently in the 'open' list
+    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currentently in the 'open_list' list
     {
-        if (total_cost == other.total_cost)     
+        if (F_cost == other.F_cost)     
         {
             if (pos[0] == other.pos[0])         
             {
@@ -42,7 +42,7 @@ struct Grid_node
             }
             return pos[0] < other.pos[0];       
         }
-        return total_cost < other.total_cost;   
+        return F_cost < other.F_cost;   
     }
 };
 
@@ -67,7 +67,7 @@ private:
  
     struct Path planner_plan_path(const geometry_msgs::msg::Point start_point, const geometry_msgs::msg::Point goal_point, const std::string serial_id, const vector<geometry_msgs::msg::Point> collisions)
     {
-        vector<Grid_node> open;
+        vector<Grid_node> open_list;
         Path final_path {};
         final_path.serial_id = serial_id;
 
@@ -77,55 +77,57 @@ private:
 
         Grid_node grid[10+1][10+1];
 
-        for (int i{0}; i <= 10; i++)
+        for (int i=0; i <= 10; i++)
         {
-            for (int j{0}; j <= 10; j++)
+            for (int j=0; j <= 10; j++)
             {
                 grid[i][j].stat = FREE;
                 grid[i][j].pos[0] = i;
                 grid[i][j].pos[1] = j;
-                grid[i][j].past_cost = INT_MAX;
+                grid[i][j].G_cost = INT_MAX;
             }
         }
 
         int start[] = {(int)start_point.x, (int)start_point.y};
         int goal[] = {(int)goal_point.x, (int)goal_point.y};
+
         grid[start[0]][start[1]].stat = START;
-        grid[start[0]][start[1]].past_cost = 0;
+        grid[start[0]][start[1]].G_cost = 0;
         grid[goal[0]][goal[1]].stat = GOAL;
-        open.push_back(grid[start[0]][start[1]]);
+
+        open_list.push_back(grid[start[0]][start[1]]);
 
         int x_nbr_arr[] = {1, 0, -1, 0};
         int y_nbr_arr[] = {0, 1, 0, -1};
         int x_nbr=0, y_nbr=0;
 
-        int x_curr=0, y_curr=0;
-        Grid_node curr;
+        int x_current=0, y_current=0;
+        Grid_node current;
 
 
-        while (open.size() != 0)
+        while (open_list.size() != 0)
         {
   
-        curr = open.at(0);
-        x_curr = curr.pos[0];
-        y_curr = curr.pos[1];
-        open.erase(open.begin());
+        current = open_list.at(0);
+        x_current = current.pos[0];
+        y_current = current.pos[1];
+        open_list.erase(open_list.begin());
  
-        grid[x_curr][y_curr].is_closed = true;
+        grid[x_current][y_current].is_closed = true;
 
-        if (grid[x_curr][y_curr].stat == GOAL)
+        if (grid[x_current][y_current].stat == GOAL)
         {
 
             geometry_msgs::msg::Point goal;
-            goal.x = x_curr;
-            goal.y = y_curr;
+            goal.x = x_current;
+            goal.y = y_current;
             final_path.point_list.push_back(goal);
 
-            while (x_curr != start[0] || y_curr != start[1])
+            while (x_current != start[0] || y_current != start[1])
             {
-                final_path.point_list.insert(final_path.point_list.begin(), grid[x_curr][y_curr].parent);
-                x_curr = final_path.point_list.at(0).x;
-                y_curr = final_path.point_list.at(0).y;
+                final_path.point_list.insert(final_path.point_list.begin(), grid[x_current][y_current].parent);
+                x_current = final_path.point_list.at(0).x;
+                y_current = final_path.point_list.at(0).y;
             }
             final_path.time_of_plan = node_->now().seconds();
             break;
@@ -134,37 +136,37 @@ private:
         // Otherwise, look at the neighboring nodes
         for (size_t i{0}; i < 4; i++)
         {
-            x_nbr = x_curr + x_nbr_arr[i];
-            y_nbr = y_curr + y_nbr_arr[i];
+            x_nbr = x_current + x_nbr_arr[i];
+            y_nbr = y_current + y_nbr_arr[i];
             
             
             if (x_nbr >= 0 && x_nbr <= 10 && y_nbr >= 0 && y_nbr <= 10)
             {
                 if (!grid[x_nbr][y_nbr].is_closed && grid[x_nbr][y_nbr].stat != OCCUPIED)
                 {
-                    int tentative_past_cost = curr.past_cost + 10;
-                    if (tentative_past_cost < grid[x_nbr][y_nbr].past_cost)
+                    int tentative_G_cost = current.G_cost + 10;
+                    if (tentative_G_cost < grid[x_nbr][y_nbr].G_cost)
                     {
-                        grid[x_nbr][y_nbr].past_cost = tentative_past_cost;
-                        grid[x_nbr][y_nbr].parent.x = x_curr;
-                        grid[x_nbr][y_nbr].parent.y = y_curr;
+                        grid[x_nbr][y_nbr].G_cost = tentative_G_cost;
+                        grid[x_nbr][y_nbr].parent.x = x_current;
+                        grid[x_nbr][y_nbr].parent.y = y_current;
 
                         // Calculate the total cost using Manhattan Distance heuristic 
-                        grid[x_nbr][y_nbr].total_cost = grid[x_nbr][y_nbr].past_cost + 10*(abs(x_nbr - goal[0]) + abs(y_nbr - goal[1]));
-                        open.push_back(grid[x_nbr][y_nbr]);
+                        grid[x_nbr][y_nbr].F_cost = grid[x_nbr][y_nbr].G_cost + 10*(abs(x_nbr - goal[0]) + abs(y_nbr - goal[1]));
+                        open_list.push_back(grid[x_nbr][y_nbr]);
                     }
                 }
             }
         }
 
         // sort the list of nodes using the function described in the 'Grid_Node' structure
-        std::sort(open.begin(), open.end());
+        std::sort(open_list.begin(), open_list.end());
         }
         return final_path;
     }
 
 
-    //geometry_msgs::msg::Point planner_check_collision(const struct Path current_path);
+    //geometry_msgs::msg::Point planner_check_collision(const struct Path currentent_path);
 
 
     void planner_get_plan(std::shared_ptr<my_robot_interfaces::srv::GetPlan::Request> req ,std::shared_ptr<my_robot_interfaces::srv::GetPlan::Response> res)
@@ -178,13 +180,13 @@ private:
 
         vector<geometry_msgs::msg::Point> collisions;
         geometry_msgs::msg::Point collision_location;
-        Path current_path {};
+        Path currentent_path {};
 
         RCLCPP_INFO(node_->get_logger(), "Using A* algorithm");
 
-        current_path = planner_plan_path(start_point, goal_point, req->serial_id, collisions);
+        currentent_path = planner_plan_path(start_point, goal_point, req->serial_id, collisions);
 
-        res->path = current_path.point_list;
+        res->path = currentent_path.point_list;
     }
 
 
