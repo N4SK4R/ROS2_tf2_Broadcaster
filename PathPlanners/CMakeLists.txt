@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(agent)
+project(PathPlanners)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -17,8 +17,8 @@ find_package(my_robot_interfaces REQUIRED)
 
 include_directories(include)
 
-add_executable(service_test src/test.cpp)
-ament_target_dependencies(service_test rclcpp std_msgs geometry_msgs visualization_msgs tf2 tf2_ros my_robot_interfaces)
+add_executable(planner_test src/test_planner.cpp)
+ament_target_dependencies(planner_test rclcpp std_msgs geometry_msgs visualization_msgs my_robot_interfaces)
 
 install(
   DIRECTORY include
@@ -26,8 +26,9 @@ install(
 )
 
 install(
-  TARGETS service_test
+  TARGETS planner_test
   DESTINATION lib/${PROJECT_NAME}
 )
+
 
 ament_package()
