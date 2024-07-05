@@ -5,6 +5,7 @@
 #include <geometry_msgs/msg/point.hpp>
 
 #include <my_robot_interfaces/srv/get_plan.hpp>
+#include "PathPlanners/CoreComponents.hpp"
 
 #include <vector>
 #include <climits>
@@ -12,39 +13,6 @@
 using std::vector;
 using namespace std::placeholders;
 
-struct Path
-{
-    std::string serial_id;
-    double time_of_plan;
-    vector<geometry_msgs::msg::Point> point_list;
-};
-
-
-enum Status {FREE, OCCUPIED, START, GOAL};
-
-
-struct Grid_node
-{
-    Status stat;                                
-    bool is_closed;                             
-    int G_cost;                              
-    int F_cost;    // F=G+H
-    int pos[2];                                 
-    geometry_msgs::msg::Point parent;                
-
-    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currentently in the 'open_list' list
-    {
-        if (F_cost == other.F_cost)     
-        {
-            if (pos[0] == other.pos[0])         
-            {
-                return pos[1] < other.pos[1];   
-            }
-            return pos[0] < other.pos[0];       
-        }
-        return F_cost < other.F_cost;   
-    }
-};
 
 class Motion_Planner
 {
@@ -52,6 +20,7 @@ public:
     explicit Motion_Planner(std::shared_ptr<rclcpp::Node> node, const int period = 10)
         : node_(node), period_(period)
     {
+        // RCLCPP_INFO(node_->get_logger(), "This is %d", PI);
         service_ = node_->create_service<my_robot_interfaces::srv::GetPlan>("/get_plan", std::bind(&Motion_Planner::planner_get_plan,this,_1,_2));
         RCLCPP_INFO(node_->get_logger(), "Motion Planner Service Ready");
     }
