@@ -15,8 +15,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdateGoal.srv"
   "srv/GetPlan.srv"
   "srv/GetMap.srv"
+  "srv/UpdateMap.srv"
   "msg/AgentInfo.msg"
-  "msg/NodeStatus.msg"
   DEPENDENCIES geometry_msgs std_msgs
 )
 

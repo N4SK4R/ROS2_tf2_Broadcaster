@@ -1,4 +1,3 @@
 # a vector of ints representing the map 
-int32[] map
 ---
-bool success
+int32[] map

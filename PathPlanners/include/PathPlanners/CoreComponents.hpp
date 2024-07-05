@@ -39,3 +39,14 @@ struct Grid_node
         return F_cost < other.F_cost;   
     }
 };
+
+struct Path_Node
+{
+    geometry_msgs::msg::Point point;
+    geometry_msgs::msg::Point parent;
+    int G_cost;
+    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currentently in the 'open_list' list
+    {
+        return G_cost < other.G_cost;
+    }
+};
