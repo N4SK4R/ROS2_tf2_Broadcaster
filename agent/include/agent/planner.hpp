@@ -184,6 +184,42 @@ private:
 
         res->path = currentent_path.point_list;
     }
+    
+    void planner_agent_pose_callback(my_robot_interfaces::msg::AgentInfo msg)
+    {   
+
+        bool found = false;
+
+        msg.pose.position.x = round(msg.pose.position.x);
+        msg.pose.position.y = round(msg.pose.position.y);
+
+        for (int i=0; i < int(agent_poses.size()); i++)
+        {
+            if (agent_poses.at(i).serial_id == msg.serial_id)
+            {
+                agent_poses.at(i) = msg;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            agent_poses.push_back(msg);
+
+            Path new_agent_path;
+            geometry_msgs::msg::Point new_point;
+
+            new_agent_path.serial_id = msg.serial_id;
+            new_agent_path.time_of_plan = node_->now().seconds();
+            new_point.x = msg.pose.position.x;
+            new_point.y = msg.pose.position.y;
+
+            new_agent_path.point_list.push_back(new_point);
+            archived_paths.push_back(new_agent_path);
+
+        }
+    }
 
 
 };
