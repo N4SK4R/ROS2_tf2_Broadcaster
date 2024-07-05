@@ -2,12 +2,12 @@
 
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-#include <my_robot_interfaces/msg/
+#include <my_robot_interfaces/msg/agent_info.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <my_robot_interfaces/srv/get_map.hpp>
 #include <my_robot_interfaces/srv/get_plan.hpp>
-#include <PathPlanners/CoreComponents.hpp>
+//#include <PathPlanners/CoreComponents.hpp>
 
 #include <bits/stdc++.h>
 using namespace std;
@@ -16,10 +16,10 @@ using namespace std;
 class Path_Planner{
 
     public : 
-        Path_Planner(std::shared_ptr<rclcpp::Node> node, const int period = 10) : node_(node),period_(period)
+        Path_Planner(std::shared_ptr<rclcpp::Node> node) : node_(node)
         {
             // RCLCPP_INFO(node_->get_logger(), "This is %d", PI);
-            service_ = node->create_service<my_robot_interfaces::srv::GetPlan>("/get_plan", std::bind(&Path_Planner::planner_get_plan,this,_1,_2));
+            service_ = node->create_service<my_robot_interfaces::srv::GetPlan>("/get_plan", std::bind(&Path_Planner::planner_get_plan,this, std::placeholders::_1, std::placeholders::_2));
             client_ = node->create_client<my_robot_interfaces::srv::GetMap>("/get_map");
             RCLCPP_INFO(node->get_logger(), "Motion Planner Service Ready");
         }
@@ -88,9 +88,11 @@ class Path_Planner{
         {
             RCLCPP_INFO(node_->get_logger(), "Plan Request Received");
             init_map();
-            response->path = {1,2,3,4,5,6,7,8,9,10};
+
+            geometry_msgs::msg::Point point , point2;
+            point.set__x(1);
+            point.set__y(2);
+            point.set__z(0);
+            response->path = {point};
         }
-}
-
-
-
+};
