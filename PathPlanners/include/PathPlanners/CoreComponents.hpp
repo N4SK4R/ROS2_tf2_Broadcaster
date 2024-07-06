@@ -1,10 +1,8 @@
 #include <rclcpp/rclcpp.hpp>
-
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/point.hpp>
-#include <string>
-#include <vector>
+#include<bits/stdc++.h>
 #include <climits>
 
 
@@ -37,16 +35,5 @@ struct Grid_node
             return pos[0] < other.pos[0];       
         }
         return F_cost < other.F_cost;   
-    }
-};
-
-struct Path_Node
-{
-    geometry_msgs::msg::Point point;
-    geometry_msgs::msg::Point parent;
-    int G_cost;
-    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currentently in the 'open_list' list
-    {
-        return G_cost < other.G_cost;
     }
 };

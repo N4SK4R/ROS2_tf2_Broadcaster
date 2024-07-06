@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "my_robot_interfaces/msg/node_status.hpp" // Update with correct message header
+
 #include <my_robot_interfaces/srv/get_map.hpp>
 #include <my_robot_interfaces/srv/update_map.hpp>
 
