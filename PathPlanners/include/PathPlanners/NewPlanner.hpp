@@ -42,9 +42,10 @@ private:
     void responseCallback(rclcpp::Client<my_robot_interfaces::srv::GetMap>::SharedFuture future) {
         RCLCPP_INFO(node_->get_logger(), "Fresh map recieved");
         auto result = future.get();
-        map_x = result->map[result->map.size() - 3];
+        map_x = result->map[result->map.size() - 1];
         map_y = result->map[result->map.size() - 2];
-        map_z = result->map[result->map.size() - 1]; 
+        map_z = result->map[result->map.size() - 3zad cs
+        DV Cznm]; 
 
         global_map.resize(map_x, vector<vector<int>>(map_y, vector<int>(map_z)));
 

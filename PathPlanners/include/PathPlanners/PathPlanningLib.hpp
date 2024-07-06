@@ -11,11 +11,12 @@
 struct Path_Node
 {
     geometry_msgs::msg::Point point;
-    geometry_msgs::msg::Point parent;
+    std::shared_ptr<Path_Node> parent;
     int G_cost;
+    int F_cost;
     bool operator<(const Path_Node& other) const
     {
-        return G_cost > other.G_cost; // Use '>' for min-heap
+        return F_cost > other.F_cost;
     }
 };
 
@@ -47,16 +48,16 @@ private:
     bool diagonal_traversal;
 
     std::vector<std::vector<int>> find_path(int source_x, int source_y, int source_z, int dest_x, int dest_y, int dest_z) {
-        if (source_z == dest_z) {
+        if (source_x == dest_x) {
             return find_path_on_level_heuristic(source_x, source_y, source_z, dest_x, dest_y, dest_z);
         } else {
             auto start_elevator = find_nearest_elevator(source_x, source_y, source_z);
-            if (!start_elevator.first && !start_elevator.second) {
+            if (!start_elevator.first) {
                 return {};
             }
 
-            auto source_to_elevator = find_path_on_level_heuristic(source_x, source_y, source_z, start_elevator.first, start_elevator.second, source_z);
-            auto elevator_to_dest = find_path_on_level_heuristic(start_elevator.first, start_elevator.second, dest_z, dest_x, dest_y, dest_z);
+            auto source_to_elevator = find_path_on_level_heuristic(source_x, source_y, source_z, source_x, start_elevator.first, start_elevator.second);
+            auto elevator_to_dest = find_path_on_level_heuristic(dest_x, start_elevator.first, start_elevator.second, dest_x, dest_y, dest_z);
 
             if (!source_to_elevator.empty() && !elevator_to_dest.empty()) {
                 source_to_elevator.insert(source_to_elevator.end(), elevator_to_dest.begin(), elevator_to_dest.end());
@@ -71,50 +72,51 @@ private:
     void print_map() {
         std::cout << "Map Contents:" << std::endl;
 
-        for(int z = 0; z < 3; z++) {
-            std::cout << "Level " << z << ":" << std::endl;
-            for(int x = 0; x < 10; x++) {
-                for(int y = 0; y < 10; y++) {
-                    std::cout << map[z][x][y] << " ";
+        for(int i=0 ; i<map.size() ; ++i){
+            for(int j=0 ; j<map[0].size() ; ++j){
+                for(int k=0 ; k<map[0][0].size() ; ++k){
+                    std::cout<<map[i][j][k]<<" ";
                 }
-                std::cout << std::endl;
+                std::cout<<std::endl;
             }
-            std::cout << std::endl;
+            std::cout<<std::endl<<std::endl;
         }
+        std::cout<<std::endl;
     }
 
     std::vector<std::vector<int>> find_path_on_level_heuristic(int source_x, int source_y, int source_z, int dest_x, int dest_y, int dest_z) {
-        std::priority_queue<Path_Node> pq;
-        std::vector<std::vector<std::vector<bool>>> visited(3, 
-            std::vector<std::vector<bool>>(10, 
-                std::vector<bool>(10, false)));
+        std::priority_queue<std::shared_ptr<Path_Node>> pq;
+        std::vector<std::vector<std::vector<bool>>> visited(map.size(), 
+        std::vector<std::vector<bool>>(map[0].size(), 
+                std::vector<bool>(map[0][0].size(), false)));
 
-        geometry_msgs::msg::Point start_point;
-        start_point.x = static_cast<double>(source_x);
-        start_point.y = static_cast<double>(source_y);
-        start_point.z = static_cast<double>(source_z);
+        auto start_node = std::make_shared<Path_Node>();
+        start_node->point.x = static_cast<double>(source_x);
+        start_node->point.y = static_cast<double>(source_y);
+        start_node->point.z = static_cast<double>(source_z);
+        start_node->parent = nullptr;
+        start_node->G_cost = 0;
+        start_node->F_cost = heuristic(source_x, source_y, source_z, dest_x, dest_y, dest_z);
 
-        geometry_msgs::msg::Point parent_point;
-        parent_point.x = -1;
-        parent_point.y = -1;
-        parent_point.z = -1;
-
-        pq.push({start_point, parent_point, 0});
+        pq.push(start_node);
 
         while (!pq.empty()) {
-            Path_Node current = pq.top();
+            auto current = pq.top();
             pq.pop();
 
-            int x = static_cast<int>(current.point.x);
-            int y = static_cast<int>(current.point.y);
-            int z = static_cast<int>(current.point.z);
+            int x = static_cast<int>(current->point.x);
+            int y = static_cast<int>(current->point.y);
+            int z = static_cast<int>(current->point.z);
 
             if (x == dest_x && y == dest_y && z == dest_z) {
-                return reconstruct_path(current);
+                std::cout << "Goal reached at (" << x << ", " << y << ", " << z << ")" << std::endl;
+                auto path = reconstruct_path(current);
+                std::cout << "Path length: " << path.size() << std::endl;
+                return path;
             }
 
-            if (visited[z][x][y]) continue;
-            visited[z][x][y] = true;
+            if (visited[x][y][z]) continue;
+            visited[x][y][z] = true;
 
             std::vector<std::pair<int, int>> directions;
             if (diagonal_traversal) {
@@ -123,24 +125,28 @@ private:
                 directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
             }
 
-            for (const auto& [dx, dy] : directions) {
-                int new_x = x + dx;
+            for (const auto& [dy, dz] : directions) {
                 int new_y = y + dy;
-                if (new_x >= 0 && new_x < 10 && new_y >= 0 && new_y < 10 && map[z][new_x][new_y] != 0) {
-                    double heuristic_factor = std::abs(new_x - dest_x) + std::abs(new_y - dest_y);
-                    double new_cost = current.G_cost + 1;
-                    if (diagonal_traversal && dx != 0 && dy != 0) {
-                        new_cost += 0.4;
+                int new_z = z + dz;
+                
+                if (new_y >= 0 && new_y < map[0].size() && new_z >= 0 && new_z < map[0][0].size() && map[x][new_y][new_z] != 0) {
+                    int new_G_cost = current->G_cost + 1;
+                    if (diagonal_traversal && dz != 0 && dy != 0) {
+                        new_G_cost += 1;  // Changed from 0.4 to 1 for integer costs
                     }
-                    if (map[z][new_x][new_y] > 1) {
-                        heuristic_factor *= map[z][new_x][new_y];
+                    if (map[x][new_y][new_z] > 1) {
+                        new_G_cost *= map[x][new_y][new_z];
                     }
-                    geometry_msgs::msg::Point new_point;
-                    new_point.x = static_cast<double>(new_x);
-                    new_point.y = static_cast<double>(new_y);
-                    new_point.z = static_cast<double>(z);
 
-                    pq.push({new_point, current.point, static_cast<int>(new_cost + heuristic_factor)});
+                    auto new_node = std::make_shared<Path_Node>();
+                    new_node->point.x = static_cast<double>(x);
+                    new_node->point.y = static_cast<double>(new_y);
+                    new_node->point.z = static_cast<double>(new_z);
+                    new_node->parent = current;
+                    new_node->G_cost = new_G_cost;
+                    new_node->F_cost = new_G_cost + heuristic(x, new_y, new_z, dest_x, dest_y, dest_z);
+
+                    pq.push(new_node);
                 }
             }
         }
@@ -148,14 +154,19 @@ private:
         return {};
     }
 
+    // Add this heuristic function
+    int heuristic(int x1, int y1, int z1, int x2, int y2, int z2) {
+        return std::abs(x2 - x1) + std::abs(y2 - y1) + std::abs(z2 - z1);
+    }
+
     std::pair<int, int> find_nearest_elevator(int x, int y, int z) {
         int min_dist = std::numeric_limits<int>::max();
         std::pair<int, int> nearest_elevator;
 
-        for (int i = 0; i < 10; ++i) {
-            for (int j = 0; j < 10; ++j) {
-                if (map[z][i][j] == -1) {
-                    int dist = std::abs(i - x) + std::abs(j - y);
+        for (int i = 0; i < map[0].size(); ++i) {
+            for (int j = 0; j < map[0][0].size(); ++j) {
+                if (map[x][i][j] == -1) {
+                    int dist = std::abs(i - y) + std::abs(j - z);
                     if (dist < min_dist) {
                         min_dist = dist;
                         nearest_elevator = std::make_pair(i, j);
@@ -167,20 +178,14 @@ private:
         return nearest_elevator;
     }
 
-    std::vector<std::vector<int>> reconstruct_path(const Path_Node& end_node) {
+    std::vector<std::vector<int>> reconstruct_path(const std::shared_ptr<Path_Node>& end_node) {
         std::vector<std::vector<int>> path;
-        Path_Node current = end_node;
+        std::shared_ptr<Path_Node> current = end_node;
 
-        while (current.parent.x != -1) {
-            path.push_back({static_cast<int>(current.point.x), static_cast<int>(current.point.y), static_cast<int>(current.point.z)});
-            geometry_msgs::msg::Point parent = current.parent;
-            geometry_msgs::msg::Point temp;
-            temp.x  = -1;
-            temp.y = -1;
-            temp.z = -1;
-            current = {current.parent, temp, 0};
+        while (current != nullptr) {
+            path.push_back({static_cast<int>(current->point.x), static_cast<int>(current->point.y), static_cast<int>(current->point.z)});
+            current = current->parent;
         }
-        path.push_back({static_cast<int>(current.point.x), static_cast<int>(current.point.y), static_cast<int>(current.point.z)});
 
         std::reverse(path.begin(), path.end());
         return path;

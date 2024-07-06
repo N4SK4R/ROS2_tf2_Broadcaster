@@ -105,9 +105,9 @@ class MapPublisherNode : public rclcpp::Node
             }
 
             // Append the dimensions of the matrices
-            global_map.push_back(10);
-            global_map.push_back(10);
             global_map.push_back(3);
+            global_map.push_back(10);
+            global_map.push_back(10);
         }
 
         // service to get map 
