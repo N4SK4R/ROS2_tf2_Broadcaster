@@ -5,7 +5,8 @@
 #include <my_robot_interfaces/srv/get_map.hpp>
 #include <my_robot_interfaces/srv/get_plan.hpp>
 //#include <PathPlanners/CoreComponents.hpp>
-#include <PathPlanners/PathPlanningLib.hpp>
+#include <PathPlanners/PathPlanningLibv2.hpp>
+
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -44,8 +45,7 @@ private:
         auto result = future.get();
         map_x = result->map[result->map.size() - 1];
         map_y = result->map[result->map.size() - 2];
-        map_z = result->map[result->map.size() - 3zad cs
-        DV Cznm]; 
+        map_z = result->map[result->map.size() - 3]; 
 
         global_map.resize(map_x, vector<vector<int>>(map_y, vector<int>(map_z)));
 
@@ -84,29 +84,45 @@ private:
         std::shared_ptr<my_robot_interfaces::srv::GetPlan::Response> response) {
         RCLCPP_INFO(node_->get_logger(), "Plan Request Received");
 
-        std::vector<int> goal = {
-            static_cast<int>(request->goal_pose.position.x),
-            static_cast<int>(request->goal_pose.position.y),
-            static_cast<int>(request->goal_pose.position.z)
-        };
-        std::vector<int> start = {0,0,0};
+        // std::vector<int> goal = {
+        //     static_cast<int>(request->goal_pose.position.x),
+        //     static_cast<int>(request->goal_pose.position.y),
+        //     static_cast<int>(request->goal_pose.position.z)
+        // };
+        // std::vector<int> start = {0,0,0};
 
-        Astar astar(global_map, start, goal);
-        auto path = astar.get_map();
+
+        geometry_msgs::msg::Point start;
+        start.x = 0;
+        start.y = 0;
+        start.z = 0;
+
+        geometry_msgs::msg::Point goal;
+        goal.x = request->goal_pose.position.x;
+        goal.y = request->goal_pose.position.y;
+        goal.z = request->goal_pose.position.z;
+
+        AStar astar;
+        auto path = astar.get_plan(global_map,start,goal);
+
+        response->path = path;
+        for(auto point : path){
+            std::cout<<point.x<<" "<<point.y<<" "<<point.z<<" ";
+        }
 
         // Do planning here
 
-        RCLCPP_INFO(node_->get_logger(), "Preparing and shipping response");
+        // RCLCPP_INFO(node_->get_logger(), "Preparing and shipping response");
 
-        for(auto point : path) {
-            geometry_msgs::msg::Point p;
-            // print the messages onto the terminal
-            RCLCPP_INFO(node_->get_logger(), "Path Point: %d %d %d", point[0], point[1], point[2]);
-            p.x = point[0];
-            p.y = point[1];
-            p.z = point[2];
-            response->path.push_back(p);
-        }
+        // for(auto point : path) {
+        //     geometry_msgs::msg::Point p;
+        //     // print the messages onto the terminal
+        //     RCLCPP_INFO(node_->get_logger(), "Path Point: %d %d %d", point[0], point[1], point[2]);
+        //     p.x = point[0];
+        //     p.y = point[1];
+        //     p.z = point[2];
+        //     response->path.push_back(p);
+        // }
     }
 };
 
