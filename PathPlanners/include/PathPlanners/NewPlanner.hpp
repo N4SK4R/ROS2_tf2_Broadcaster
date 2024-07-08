@@ -43,9 +43,9 @@ private:
     void responseCallback(rclcpp::Client<my_robot_interfaces::srv::GetMap>::SharedFuture future) {
         RCLCPP_INFO(node_->get_logger(), "Fresh map recieved");
         auto result = future.get();
-        map_x = result->map[result->map.size() - 1];
+        map_x = result->map[result->map.size() - 3];
         map_y = result->map[result->map.size() - 2];
-        map_z = result->map[result->map.size() - 3]; 
+        map_z = result->map[result->map.size() - 1]; 
 
         global_map.resize(map_x, vector<vector<int>>(map_y, vector<int>(map_z)));
 
@@ -84,12 +84,8 @@ private:
         std::shared_ptr<my_robot_interfaces::srv::GetPlan::Response> response) {
         RCLCPP_INFO(node_->get_logger(), "Plan Request Received");
 
-        // std::vector<int> goal = {
-        //     static_cast<int>(request->goal_pose.position.x),
-        //     static_cast<int>(request->goal_pose.position.y),
-        //     static_cast<int>(request->goal_pose.position.z)
-        // };
-        // std::vector<int> start = {0,0,0};
+        
+        //new planner v2
 
 
         geometry_msgs::msg::Point start;
@@ -110,7 +106,14 @@ private:
             std::cout<<point.x<<" "<<point.y<<" "<<point.z<<" ";
         }
 
-        // Do planning here
+        // old planner v1
+
+        // std::vector<int> goal = {
+        //     static_cast<int>(request->goal_pose.position.x),
+        //     static_cast<int>(request->goal_pose.position.y),
+        //     static_cast<int>(request->goal_pose.position.z)
+        // };
+        // std::vector<int> start = {0,0,0};
 
         // RCLCPP_INFO(node_->get_logger(), "Preparing and shipping response");
 

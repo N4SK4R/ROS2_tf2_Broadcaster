@@ -22,7 +22,7 @@ struct CompareNode {
 
 class PathPlanners {
 public:
-    virtual std::vector<geometry_msgs::msg::Point> get_plan(std::vector<std::vector<std::vector<int>>> map, geometry_msgs::msg::Point start, geometry_msgs::msg::Point goal) {}
+    virtual std::vector<geometry_msgs::msg::Point> get_plan(std::vector<std::vector<std::vector<int>>> map, geometry_msgs::msg::Point start, geometry_msgs::msg::Point goal) = 0; // Pure virtual function
 };
 
 class AStar : public PathPlanners {
@@ -36,6 +36,7 @@ public:
         this->goal = goal;
         this->start = start;
         this->diagonal_traversal = false; // Set diagonal traversal if needed
+        this->print_map();
         return find_path(start, goal);
     }
 
@@ -113,7 +114,7 @@ private:
                 int new_y = y + dy;
                 int new_z = z + dz;
 
-                if (new_y >= 0 && new_y < map[0].size() && new_z >= 0 && new_z < map[0][0].size() && map[x][new_y][new_z] != 0) {
+                if (new_y >= 0 && new_y < static_cast<int>(map[0].size()) && new_z >= 0 && new_z < static_cast<int>(map[0][0].size()) && map[x][new_y][new_z] != 0) {
                     int new_G_cost = current->G_cost + 1;
                     if (diagonal_traversal && dz != 0 && dy != 0) {
                         new_G_cost += 1;  // Changed from 0.4 to 1 for integer costs
@@ -145,8 +146,8 @@ private:
         elev.y = -1;
         elev.z = -1;
 
-        for (int i = 0; i < map[0].size(); ++i) {
-            for (int j = 0; j < map[0][0].size(); ++j) {
+        for (int i = 0; i < static_cast<int>(map[0].size()); ++i) {
+            for (int j = 0; j < static_cast<int>(map[0][0].size()); ++j) {
                 if (map[start.x][i][j] == -1) {
                     int dist = std::abs(i - start.y) + std::abs(start.z - j);
                     if (min_dist > dist) {
@@ -176,4 +177,18 @@ private:
         std::reverse(path.begin(), path.end());
         return path;
     }
+
+    void print_map(){
+        for(int i=0 ; i<static_cast<int>(map.size()) ; ++i){
+            for(int j = 0 ; j<static_cast<int>(map[0].size()) ; ++j){
+                for(int k = 0 ; k<static_cast<int>(map[0][0].size()) ; ++k){
+                    std::cout<<map[i][j][k]<<" ";
+                }
+                std::cout<<std::endl;
+            }
+            std::cout<<std::endl;
+        }
+        std::cout<<std::endl;
+    }
 };
+
