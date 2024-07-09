@@ -115,12 +115,13 @@ private:
                 int new_z = z + dz;
 
                 if (new_y >= 0 && new_y < static_cast<int>(map[0].size()) && new_z >= 0 && new_z < static_cast<int>(map[0][0].size()) && map[x][new_y][new_z] != 0) {
+                    // Cost of moving to a new node is 1 * map[x][new_y][new_z] i.e the cost of the node
                     int new_G_cost = current->G_cost + 1;
                     if (diagonal_traversal && dz != 0 && dy != 0) {
                         new_G_cost += 1;  // Changed from 0.4 to 1 for integer costs
                     }
                     if (map[x][new_y][new_z] > 1) {
-                        new_G_cost *= map[x][new_y][new_z];
+                        new_G_cost *= map[x][new_y][new_z]; // if there is traffic or any other cost multiply the cost with the cost of the node
                     }
 
                     auto new_node = std::make_shared<Path_Node>();
