@@ -130,6 +130,7 @@ private:
                 x_current = final_path.point_list.at(0).x;
                 y_current = final_path.point_list.at(0).y;
             }
+            // the timestamp is added to the final_path object
             final_path.time_of_plan = node_->now().seconds();
             break;
         }
