@@ -5,6 +5,7 @@
 #include <geometry_msgs/msg/point.hpp>
 
 #include <my_robot_interfaces/srv/get_plan.hpp>
+#include <my_robot_interfaces/msg/agent_info.hpp>
 
 #include <vector>
 #include <climits>
@@ -32,7 +33,7 @@ struct Grid_node
     int pos[2];                                 
     geometry_msgs::msg::Point parent;                
 
-    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currentently in the 'open_list' list
+    bool operator<(Grid_node other) const       // Comparison function used by A* to sort the nodes currently in the 'open_list' list
     {
         if (F_cost == other.F_cost)     
         {
@@ -50,25 +51,27 @@ class Motion_Planner
 {
 public:
     explicit Motion_Planner(std::shared_ptr<rclcpp::Node> node, const int period = 10)
-        : node_(node), period_(period)
+        : node_(node), period(period)
     {
         service_ = node_->create_service<my_robot_interfaces::srv::GetPlan>("/get_plan", std::bind(&Motion_Planner::planner_get_plan,this,_1,_2));
+        sub_agent_info_ = node_->create_subscription<my_robot_interfaces::msg::AgentInfo>("/agent_info", 100, std::bind(&Motion_Planner::planner_agent_pose_callback, this, _1));
         RCLCPP_INFO(node_->get_logger(), "Motion Planner Service Ready");
     }
 private:
 
     std::shared_ptr<rclcpp::Node> node_;                                                                       
-    rclcpp::Service<my_robot_interfaces::srv::GetPlan>::SharedPtr service_;                               
+    rclcpp::Service<my_robot_interfaces::srv::GetPlan>::SharedPtr service_;   
+    rclcpp::Subscription<my_robot_interfaces::msg::AgentInfo>::SharedPtr sub_agent_info_;                            
 
-    const int period_;                                               // Time in seconds for the agent to traverse the whole path - defaults to 10 seconds
+    const int period;                                               
     vector<Path> archived_paths;                                    
-    //vector<multi_agent_planner::agent_info> agent_start_poses;      // Holds the most up-to-date pose of each agent
+    vector<my_robot_interfaces::msg::AgentInfo> agent_poses;      
 
  
     struct Path planner_plan_path(const geometry_msgs::msg::Point start_point, const geometry_msgs::msg::Point goal_point, const std::string serial_id, const vector<geometry_msgs::msg::Point> collisions)
     {
         vector<Grid_node> open_list;
-        Path final_path {};
+        Path final_path;
         final_path.serial_id = serial_id;
 
         Grid_node grid[10+1][10+1];
@@ -84,6 +87,8 @@ private:
             }
         }
 
+        for (auto p : collisions)grid[(int)p.x][(int)p.y].stat = OCCUPIED;
+    
         int start[] = {(int)start_point.x, (int)start_point.y};
         int goal[] = {(int)goal_point.x, (int)goal_point.y};
 
@@ -162,29 +167,115 @@ private:
     }
 
 
-    //geometry_msgs::msg::Point planner_check_collision(const struct Path currentent_path);
+    geometry_msgs::msg::Point planner_check_collision(const struct Path current_path)
+    {
+        geometry_msgs::msg::Point collision_point;
+        collision_point.x = -1;
+        collision_point.y = -1;
+
+        for (auto path_obj : archived_paths)
+        {
+        if (path_obj.serial_id != current_path.serial_id)
+        {
+            
+            if ((current_path.time_of_plan - path_obj.time_of_plan) >= period)
+            {
+
+                for (auto current_path_point : current_path.point_list)
+                {
+                    if (path_obj.point_list.back().x == current_path_point.x && path_obj.point_list.back().y == current_path_point.y)
+                    {
+                        return current_path_point;
+                    }
+                }
+            }
+
+            else
+            {
+                for (size_t i=0; i < path_obj.point_list.size(); i++)
+                {
+
+                    for (size_t j=0; j < current_path.point_list.size(); j++)
+                    {
+
+                        if (path_obj.point_list.at(i).x == current_path.point_list.at(j).x && path_obj.point_list.at(i).y == current_path.point_list.at(j).y)
+                        {
+                            double time_offset = current_path.time_of_plan - path_obj.time_of_plan;
+
+                            double segments_in_currentPath  = current_path.point_list.size() - 1;
+                            double sec_per_seg_current_path = period/segments_in_currentPath;
+
+                            double segments_in_archived_path = path_obj.point_list.size() - 1;
+                            double sec_per_seg_archived_path = period/segments_in_archived_path;
+
+                            double entry_time_current_path = (j - 1) * sec_per_seg_current_path;
+                            double exit_time_current_path  = (j + 1) * sec_per_seg_current_path;
+
+                            double entry_time_archived_path = (i - 1) * sec_per_seg_archived_path - time_offset;
+                            double exit_time_archived_path = (i + 1)  * sec_per_seg_archived_path - time_offset;
+
+                            if (!(exit_time_current_path <= entry_time_archived_path || entry_time_current_path >=exit_time_archived_path))
+                            {
+                                return current_path.point_list.at(j);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+        return collision_point;
+    }
 
 
     void planner_get_plan(std::shared_ptr<my_robot_interfaces::srv::GetPlan::Request> req ,std::shared_ptr<my_robot_interfaces::srv::GetPlan::Response> res)
     {
-        geometry_msgs::msg::Point start_point, goal_point;
+        geometry_msgs::msg::Point start_point,goal_point;
         goal_point.x = req->goal_pose.position.x;
         goal_point.y = req->goal_pose.position.y;
 
-        start_point.x = 0.0;
-        start_point.y = 0.0;
+        bool found = false;
+        for (auto agent : agent_poses)
+        {
+            if (agent.serial_id == req->serial_id)
+            {
+                start_point.x = agent.pose.position.x;
+                start_point.y = agent.pose.position.y;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)RCLCPP_INFO(node_->get_logger(),"%s Does not Exist", req->serial_id.c_str());
 
         vector<geometry_msgs::msg::Point> collisions;
         geometry_msgs::msg::Point collision_location;
-        Path currentent_path {};
+        Path current_path;
 
-        RCLCPP_INFO(node_->get_logger(), "Using A* algorithm");
+        //do{
+        current_path = planner_plan_path(start_point, goal_point, req->serial_id, collisions);
 
-        currentent_path = planner_plan_path(start_point, goal_point, req->serial_id, collisions);
+        collision_location = planner_check_collision(current_path);
 
-        res->path = currentent_path.point_list;
+        RCLCPP_INFO(node_->get_logger(),"Collsion Location (%f,%f)", collision_location.x,collision_location.y);
+
+            //collisions.push_back(collision_location);
+
+        //} while(collision_location.x != -1 && collision_location.y != -1 && current_path.point_list.size() != 0);
+
+        res->path = current_path.point_list;
+
+        for (auto path_obj : archived_paths)
+        {
+            if (path_obj.serial_id == current_path.serial_id)
+            {
+                path_obj.time_of_plan = current_path.time_of_plan;
+                path_obj.point_list = current_path.point_list;
+            }
+        }
     }
-    
+
     void planner_agent_pose_callback(my_robot_interfaces::msg::AgentInfo msg)
     {   
 
@@ -220,6 +311,5 @@ private:
 
         }
     }
-
 
 };
