@@ -11,6 +11,7 @@
 #include <my_robot_interfaces/msg/agent_info.hpp>
 
 #include <vector>
+#include <string>
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -19,26 +20,25 @@ using std::vector;
 class Agent_Robot 
 {
 public:
-    explicit Agent_Robot(std::shared_ptr<rclcpp::Node> node, std::string serial_id, geometry_msgs::msg::Pose start_pose)
-        : node_(node), serial_id(serial_id), pose(start_pose)
+    explicit Agent_Robot(std::shared_ptr<rclcpp::Node> node, std::string serial_id, geometry_msgs::msg::Pose start_pose, const double period = 10.0, const double timer_hz = 30.0)
+        : node_(node), serial_id(serial_id), pose(start_pose), period(period), timer_hz(timer_hz)
     {
-
-        int a = serial_id.at(6);
-        srand(time(NULL) + a);
-        agent_color[0] = (rand() % 100) * 0.01;
-        agent_color[1] = (rand() % 100) * 0.01;
-        agent_color[2] = (rand() % 100) * 0.01;
+        agent_color[0] = 188;
+        agent_color[1] = 215;
+        agent_color[2] = 224;
+        dt_position = 0;
         done = true;
+        teleport=false;
 
-        pub_agent_marker_ = node_->create_publisher<visualization_msgs::msg::Marker>("/Rviz_marker_topic/base_link", 100);
+        pub_agent_marker_ = node_->create_publisher<visualization_msgs::msg::Marker>("/Rviz_marker_topic/base_link", 10);
         pub_path_marker_  = node_->create_publisher<visualization_msgs::msg::Marker>("/Rviz_marker_topic/path", 10);
-        pub_agent_info_   = node_->create_publisher<my_robot_interfaces::msg::AgentInfo>("/agent_info", 100);
-        service_ = node_->create_service<my_robot_interfaces::srv::UpdateGoal>("/update_goal", std::bind(&Agent_Robot::agent_update_goal,this,_1));
+        pub_agent_info_   = node_->create_publisher<my_robot_interfaces::msg::AgentInfo>("/agent_info", 10);
+        service_ = node_->create_service<my_robot_interfaces::srv::UpdateGoal>(serial_id+"/update_goal", std::bind(&Agent_Robot::agent_update_goal,this,_1));
         get_plan_service_client_ = node_->create_client<my_robot_interfaces::srv::GetPlan>("/get_plan");
         br_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_);
 
-        timer_ = node_->create_wall_timer(std::chrono::duration<double>(1.0), std::bind(&Agent_Robot::agent_update_pose, this));
-        RCLCPP_INFO(node_->get_logger(), "Ready to update goal pose for agent");
+        timer_ = node_->create_wall_timer(std::chrono::duration<double>(1.0/timer_hz), std::bind(&Agent_Robot::agent_update_pose, this));
+        RCLCPP_INFO(node_->get_logger(), "Ready to update goal pose for %s", serial_id.c_str());
     }
 
 private:
@@ -48,32 +48,48 @@ private:
     geometry_msgs::msg::Pose pose; 
 
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_agent_marker_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_path_marker_;
-    rclcpp::Publisher<my_robot_interfaces::msg::AgentInfo>::SharedPtr pub_agent_info_;  
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_path_marker_;  
+    rclcpp::Publisher<my_robot_interfaces::msg::AgentInfo>::SharedPtr pub_agent_info_;
     rclcpp::Client<my_robot_interfaces::srv::GetPlan>::SharedPtr get_plan_service_client_;                    
     rclcpp::Service<my_robot_interfaces::srv::UpdateGoal>::SharedPtr service_;
 
     rclcpp::TimerBase::SharedPtr timer_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> br_;
 
+    const double period;     
+    const double timer_hz;                                 
     double agent_color[3];                                 
-    bool done;                                             
+    double dt_position;                                    
+    bool done;   
+    bool teleport;                                           
     geometry_msgs::msg::Pose goal_pose;                    
     vector<geometry_msgs::msg::Point> point_list;          
 
     void agent_update_pose()
     {   
-        static int index =0;
+        static int cntr=0, index =0;
 
         if (!done)
         {   
-            pose.position.x = point_list.at(index).x;
-            pose.position.y = point_list.at(index).y;
-            index++;
+            pose.position.x += (point_list.at(index + 1).x - point_list.at(index).x)*dt_position;
+            pose.position.y += (point_list.at(index + 1).y - point_list.at(index).y)*dt_position;
+            pose.position.z += (point_list.at(index + 1).z - point_list.at(index).z)*dt_position;
 
-            if (index == int(point_list.size()))
+            if (cntr*dt_position >= 1) //for every 1 segment
+            {
+                cntr = 0;
+                index++;
+                pose.position.x = point_list.at(index).x;
+                pose.position.y = point_list.at(index).y;
+                pose.position.z = point_list.at(index).z;
+            }
+
+            cntr++;
+
+            if (index == int(point_list.size()-1))
             {
                 done = true;
+                //teleport=true;
                 index = 0;
                 RCLCPP_INFO(node_->get_logger(),"Target goal has been reached by %s", serial_id.c_str());
             }
@@ -86,12 +102,19 @@ private:
         pub_agent_info_->publish(msg);
         agent_update_transform(pose);
         agent_build_agent_marker();
+
+        if (teleport)
+        {
+            pose.position.x = 5;
+            pose.position.y = 5;
+            pose.position.z = 2;
+        }
     }
  
     void agent_update_goal(std::shared_ptr<my_robot_interfaces::srv::UpdateGoal::Request> req)
     {
         goal_pose = req->goal_pose;
-        RCLCPP_INFO(node_->get_logger(),"Intiating Movement to (%f,%f)", goal_pose.position.x,goal_pose.position.y);
+        RCLCPP_INFO(node_->get_logger(),"Intiating Movement to (%f,%f,%f)", goal_pose.position.x,goal_pose.position.y,goal_pose.position.z);
         
         auto request =std::make_shared<my_robot_interfaces::srv::GetPlan::Request>();
         request->serial_id=serial_id;
@@ -107,8 +130,11 @@ private:
         {
             point_list=future.get()->path;
 
-            done = false;
-            RCLCPP_INFO(node_->get_logger(), "Path Returned");
+            int segments=0;
+            segments = point_list.size() - 1;
+            dt_position = (segments/period)/timer_hz;
+            RCLCPP_INFO(node_->get_logger(), "Path Returned with Segments %d",segments); 
+            done = false;           
             agent_build_path_marker(future.get()->path); 
         }
         
@@ -130,6 +156,7 @@ private:
         transform.child_frame_id = serial_id;
         transform.transform.translation.x = pose.position.x;
         transform.transform.translation.y = pose.position.y;
+        transform.transform.translation.z = pose.position.z;
         transform.transform.rotation.x = q.x();
         transform.transform.rotation.y = q.y();
         transform.transform.rotation.z = q.z();
@@ -149,7 +176,7 @@ private:
         marker.pose.position.z = 0.25;
         marker.scale.x = 1.0;
         marker.scale.y = 1.0;
-        marker.scale.z = 0.5;
+        marker.scale.z = 1.0;
         marker.color.a = 1.0;
         marker.color.r = agent_color[0];
         marker.color.g = agent_color[1];
@@ -167,7 +194,7 @@ private:
         marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.pose.orientation.w = 1.0;
-        marker.scale.x = 0.05;
+        marker.scale.x = 0.5;
         marker.color.r = agent_color[0];
         marker.color.g = agent_color[1];
         marker.color.b = agent_color[2];

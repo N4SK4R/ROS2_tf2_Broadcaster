@@ -34,10 +34,6 @@ class MapPublisherNode : public rclcpp::Node
         rclcpp::Service<my_robot_interfaces::srv::GetMap>::SharedPtr get_service_;
         rclcpp::Service<my_robot_interfaces::srv::UpdateMap>::SharedPtr update_service_;
 
-        int num_levels_x;
-        int num_levels_y;
-        int num_levels_z;
-
         std::vector<int> global_map;
 
         // Initialize the grid map

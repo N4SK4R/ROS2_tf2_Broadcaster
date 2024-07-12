@@ -19,13 +19,24 @@ def generate_launch_description():
         arguments=['-d', rviz_config_path]
     )
 
+    map_publisher_node = Node(
+        package="map_publisher",
+        executable="map_publisher_node"
+    )
+
     path_planner_node = Node(
-        package="agent",
+        package="PathPlanners",
         executable="planner_test",
     )
+
+    # agent_node = Node(
+    #     package="agent",
+    #     executable="service_test",
+    # )
     
     return LaunchDescription([
         marker_node,
         rviz2_node,
+        map_publisher_node,
         path_planner_node
     ])
