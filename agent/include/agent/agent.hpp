@@ -1,5 +1,4 @@
 #include <rclcpp/rclcpp.hpp>
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <visualization_msgs/msg/marker.hpp>
@@ -141,13 +140,6 @@ private:
     void agent_update_transform(geometry_msgs::msg::Pose pose)
     {   
         geometry_msgs::msg::TransformStamped transform;
-        tf2::Quaternion q;
-
-        q.setX(pose.orientation.x);
-        q.setY(pose.orientation.y);
-        q.setZ(pose.orientation.z);
-        q.setW(pose.orientation.w);
-        q.normalize();
 
         transform.header.stamp = node_->now();
         transform.header.frame_id = "world";
@@ -155,10 +147,10 @@ private:
         transform.transform.translation.x = pose.position.x;
         transform.transform.translation.y = pose.position.y;
         transform.transform.translation.z = pose.position.z;
-        transform.transform.rotation.x = q.x();
-        transform.transform.rotation.y = q.y();
-        transform.transform.rotation.z = q.z();
-        transform.transform.rotation.w = q.w();
+        transform.transform.rotation.x = pose.orientation.x;
+        transform.transform.rotation.y = pose.orientation.y;
+        transform.transform.rotation.z = pose.orientation.z;
+        transform.transform.rotation.w = pose.orientation.w;
         br_->sendTransform(transform);
     }
 

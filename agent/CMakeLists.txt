@@ -11,14 +11,13 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(my_robot_interfaces REQUIRED)
 
 include_directories(include)
 
 add_executable(service_test src/test.cpp)
-ament_target_dependencies(service_test rclcpp std_msgs geometry_msgs visualization_msgs tf2 tf2_ros my_robot_interfaces)
+ament_target_dependencies(service_test rclcpp std_msgs geometry_msgs visualization_msgs tf2_ros my_robot_interfaces)
 
 add_executable(planner_test src/test_planner.cpp)
 ament_target_dependencies(planner_test rclcpp std_msgs geometry_msgs visualization_msgs my_robot_interfaces)

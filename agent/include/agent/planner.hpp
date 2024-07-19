@@ -174,60 +174,80 @@ private:
         collision_point.x = -1;
         collision_point.y = -1;
 
+        RCLCPP_INFO(rclcpp::get_logger("planner"), "Starting collision check");
+
         for (auto path_obj : archived_paths)
         {
-        if (path_obj.serial_id != current_path.serial_id)
-        {
-            
-            if ((current_path.time_of_plan - path_obj.time_of_plan) >= period)
+            if (path_obj.serial_id != current_path.serial_id)
             {
+                RCLCPP_INFO(rclcpp::get_logger("planner"), "Comparing paths with different serial IDs");
 
-                for (auto current_path_point : current_path.point_list)
+                if ((current_path.time_of_plan - path_obj.time_of_plan) >= period)
                 {
-                    if (path_obj.point_list.back().x == current_path_point.x && path_obj.point_list.back().y == current_path_point.y)
+                    RCLCPP_INFO(rclcpp::get_logger("planner"), "Other Agents Reached its Goal");
+
+                    for (auto current_path_point : current_path.point_list)
                     {
-                        return current_path_point;
+                        RCLCPP_INFO(rclcpp::get_logger("planner"),"checking point :(%f, %f)", current_path_point.x, current_path_point.y);
+                        RCLCPP_INFO(rclcpp::get_logger("planner"),"checking with  :(%f, %f)", path_obj.point_list.back().x, path_obj.point_list.back().y);
+
+                        if (path_obj.point_list.back().x == current_path_point.x && path_obj.point_list.back().y == current_path_point.y)
+                        {
+                            RCLCPP_INFO(rclcpp::get_logger("planner"), "Collision detected at point (%f, %f)", current_path_point.x, current_path_point.y);
+                            return current_path_point;
+                        }
+                        else
+                        {
+                            RCLCPP_INFO(rclcpp::get_logger("planner"), "No collision at point (%f, %f)", current_path_point.x, current_path_point.y);
+                        }
                     }
                 }
-            }
-
-            else
-            {
-                for (size_t i=0; i < path_obj.point_list.size(); i++)
+                else
                 {
+                    RCLCPP_INFO(rclcpp::get_logger("planner"), "Agent has not reached goal");
 
-                    for (size_t j=0; j < current_path.point_list.size(); j++)
+                    for (size_t i = 0; i < path_obj.point_list.size(); i++)
                     {
-
-                        if (path_obj.point_list.at(i).x == current_path.point_list.at(j).x && path_obj.point_list.at(i).y == current_path.point_list.at(j).y)
+                        for (size_t j = 0; j < current_path.point_list.size(); j++)
                         {
-                            double time_offset = current_path.time_of_plan - path_obj.time_of_plan;
-
-                            double segments_in_currentPath  = current_path.point_list.size() - 1;
-                            double sec_per_seg_current_path = period/segments_in_currentPath;
-
-                            double segments_in_archived_path = path_obj.point_list.size() - 1;
-                            double sec_per_seg_archived_path = period/segments_in_archived_path;
-
-                            double entry_time_current_path = (j - 1) * sec_per_seg_current_path;
-                            double exit_time_current_path  = (j + 1) * sec_per_seg_current_path;
-
-                            double entry_time_archived_path = (i - 1) * sec_per_seg_archived_path - time_offset;
-                            double exit_time_archived_path = (i + 1)  * sec_per_seg_archived_path - time_offset;
-
-                            if (!(exit_time_current_path <= entry_time_archived_path || entry_time_current_path >=exit_time_archived_path))
+                            if (path_obj.point_list.at(i).x == current_path.point_list.at(j).x && path_obj.point_list.at(i).y == current_path.point_list.at(j).y)
                             {
-                                return current_path.point_list.at(j);
+                                RCLCPP_INFO(rclcpp::get_logger("planner"), "Checking temporal collision at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
+
+                                double time_offset = current_path.time_of_plan - path_obj.time_of_plan;
+
+                                double segments_in_currentPath = current_path.point_list.size() - 1;
+                                double sec_per_seg_current_path = period / segments_in_currentPath;
+
+                                double segments_in_archived_path = path_obj.point_list.size() - 1;
+                                double sec_per_seg_archived_path = period / segments_in_archived_path;
+
+                                double entry_time_current_path = (j - 1) * sec_per_seg_current_path;
+                                double exit_time_current_path = (j + 1) * sec_per_seg_current_path;
+
+                                double entry_time_archived_path = (i - 1) * sec_per_seg_archived_path - time_offset;
+                                double exit_time_archived_path = (i + 1) * sec_per_seg_archived_path - time_offset;
+
+                                if (!(exit_time_current_path <= entry_time_archived_path || entry_time_current_path >= exit_time_archived_path))
+                                {
+                                    RCLCPP_INFO(rclcpp::get_logger("planner"), "Temporal collision detected at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
+                                    return current_path.point_list.at(j);
+                                }
+                                else
+                                {
+                                    RCLCPP_INFO(rclcpp::get_logger("planner"), "No temporal collision at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
+        RCLCPP_INFO(rclcpp::get_logger("planner"), "No collision detected, returning default collision point");
         return collision_point;
     }
+
 
 
     void planner_get_plan(std::shared_ptr<my_robot_interfaces::srv::GetPlan::Request> req ,std::shared_ptr<my_robot_interfaces::srv::GetPlan::Response> res)
@@ -254,27 +274,44 @@ private:
         geometry_msgs::msg::Point collision_location;
         Path current_path;
 
-        //do{
+        do{
         current_path = planner_plan_path(start_point, goal_point, req->serial_id, collisions);
 
         collision_location = planner_check_collision(current_path);
 
         RCLCPP_INFO(node_->get_logger(),"Collsion Location (%f,%f)", collision_location.x,collision_location.y);
+        
+        collisions.push_back(collision_location);
 
-            //collisions.push_back(collision_location);
+        } while(collision_location.x != -1 && collision_location.y != -1 && current_path.point_list.size() != 0);
 
-        //} while(collision_location.x != -1 && collision_location.y != -1 && current_path.point_list.size() != 0);
+        for (auto &path_obj : archived_paths)
+        {
+
+            if (path_obj.serial_id == current_path.serial_id)
+            {   
+                RCLCPP_INFO_STREAM(node_->get_logger(),"Entering in Database " <<path_obj.serial_id);
+                path_obj.time_of_plan = current_path.time_of_plan;
+
+            for (auto point : current_path.point_list)
+            {
+                RCLCPP_INFO(node_->get_logger(),"points in current path :(%f, %f)",point.x,point.y);
+            } 
+
+                path_obj.point_list   = current_path.point_list;
+
+            for (auto point : path_obj.point_list)
+            {
+                RCLCPP_INFO(node_->get_logger(),"points saved :(%f, %f)",point.x,point.y);
+            }
+            }
+        }
+        // RCLCPP_INFO(node_->get_logger(),"Last point in agent_2 :(%f, %f)",archived_paths.at(0).point_list.at(4).x,archived_paths.at(0).point_list.at(4).y);
+
+        // RCLCPP_INFO(node_->get_logger(),"Last point in agent_1 :(%f, %f)",archived_paths.at(1).point_list.back().x,archived_paths.at(1).point_list.back().y);
 
         res->path = current_path.point_list;
 
-        for (auto path_obj : archived_paths)
-        {
-            if (path_obj.serial_id == current_path.serial_id)
-            {
-                path_obj.time_of_plan = current_path.time_of_plan;
-                path_obj.point_list = current_path.point_list;
-            }
-        }
     }
 
     void planner_agent_pose_callback(my_robot_interfaces::msg::AgentInfo msg)
