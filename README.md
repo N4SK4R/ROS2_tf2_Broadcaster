@@ -36,5 +36,6 @@ Send a Geometry Pose msg to call the service
 
 https://github.com/user-attachments/assets/f5409514-85fe-4ddf-b162-f3b95d7a29da
 
+https://github.com/user-attachments/assets/52c1bb41-dbc0-40bb-9e08-968d06c5cfe2
 
 
