@@ -212,7 +212,7 @@ private:
                         {
                             if (path_obj.point_list.at(i).x == current_path.point_list.at(j).x && path_obj.point_list.at(i).y == current_path.point_list.at(j).y)
                             {
-                                RCLCPP_INFO(rclcpp::get_logger("planner"), "Checking temporal collision at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
+                                RCLCPP_INFO(rclcpp::get_logger("planner"), "Checking collision at intersection point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
 
                                 double time_offset = current_path.time_of_plan - path_obj.time_of_plan;
 
@@ -235,7 +235,7 @@ private:
                                 }
                                 else
                                 {
-                                    RCLCPP_INFO(rclcpp::get_logger("planner"), "No temporal collision at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
+                                    RCLCPP_INFO(rclcpp::get_logger("planner"), "No Collision at point (%f, %f)", current_path.point_list.at(j).x, current_path.point_list.at(j).y);
                                 }
                             }
                         }
@@ -280,7 +280,7 @@ private:
         collision_location = planner_check_collision(current_path);
 
         RCLCPP_INFO(node_->get_logger(),"Collsion Location (%f,%f)", collision_location.x,collision_location.y);
-        
+        //what?
         collisions.push_back(collision_location);
 
         } while(collision_location.x != -1 && collision_location.y != -1 && current_path.point_list.size() != 0);
@@ -290,28 +290,15 @@ private:
 
             if (path_obj.serial_id == current_path.serial_id)
             {   
-                RCLCPP_INFO_STREAM(node_->get_logger(),"Entering in Database " <<path_obj.serial_id);
+                RCLCPP_INFO_STREAM(node_->get_logger(),"Entering in Database "<<path_obj.serial_id);
                 path_obj.time_of_plan = current_path.time_of_plan;
-
-            for (auto point : current_path.point_list)
-            {
-                RCLCPP_INFO(node_->get_logger(),"points in current path :(%f, %f)",point.x,point.y);
-            } 
-
                 path_obj.point_list   = current_path.point_list;
 
-            for (auto point : path_obj.point_list)
-            {
-                RCLCPP_INFO(node_->get_logger(),"points saved :(%f, %f)",point.x,point.y);
-            }
+                for (auto point : path_obj.point_list)RCLCPP_INFO(node_->get_logger(),"points saved :(%f, %f)",point.x,point.y);
+            
             }
         }
-        // RCLCPP_INFO(node_->get_logger(),"Last point in agent_2 :(%f, %f)",archived_paths.at(0).point_list.at(4).x,archived_paths.at(0).point_list.at(4).y);
-
-        // RCLCPP_INFO(node_->get_logger(),"Last point in agent_1 :(%f, %f)",archived_paths.at(1).point_list.back().x,archived_paths.at(1).point_list.back().y);
-
         res->path = current_path.point_list;
-
     }
 
     void planner_agent_pose_callback(my_robot_interfaces::msg::AgentInfo msg)
@@ -347,7 +334,7 @@ private:
             new_agent_path.point_list.push_back(new_point);
             archived_paths.push_back(new_agent_path);
 
-        }
     }
+}
 
 };

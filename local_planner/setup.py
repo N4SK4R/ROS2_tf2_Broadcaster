@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "pose_listener = local_planner.p:main"
+            "pose_listener = local_planner.p:main",
+            "final_test = local_planner.final_test:main"
         ],
     },
 )
